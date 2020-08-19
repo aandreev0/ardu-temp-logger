@@ -1,115 +1,29 @@
 /*
- * This goal of the application is to set the digital output on pins 8-13
- * This can be accomplished in three ways.  First, a serial command can directly set
- * the digital output pattern.  Second, a series of patterns can be stored in the
- * Arduino and TTLs coming in on pin 2 will then trigger to the consecutive pattern (trigger mode).
- * Third, intervals between consecutive patterns can be specified and paterns will be
- * generated at these specified time points (timed trigger mode).
- *
- * Interface specifications:
- * digital pattern specification: single byte, bit 0 corresponds to pin 8,
- *   bit 1 to pin 9, etc..  Bits 7 and 8 will not be used (and should stay 0).
- *
- * Set digital output command: 1p
- *   Where p is the desired digital pattern.  Controller will return 1 to
- *   indicate succesfull execution.
- *
- * Get digital output command: 2
- *   Controller will return 2p.  Where p is the current digital output pattern
- *
- * Set Analogue output command: 3xvv
- *   Where x is the output channel (either 1 or 2), and vv is the output in a
- *   12-bit significant number.
- *   Controller will return 3xvv:
- *
- * Get Analogue output:  4
- *
- *
- * Set digital patten for triggered mode: 5xd
- *   Where x is the number of the pattern (currently, 12 patterns can be stored).
- *   and d is the digital pattern to be stored at that position.  Note that x should
- *   be the real number (i.e., not  ASCI encoded)
- *   Controller will return 5xd
- *
- * Set the Number of digital patterns to be used: 6x
- *   Where x indicates how many digital patterns will be used (currently, up to 12
- *   patterns maximum).  In triggered mode, after reaching this many triggers,
- *   the controller will re-start the sequence with the first pattern.
- *   Controller will return 6x
- *
- * Skip trigger: 7x
- *   Where x indicates how many digital change events on the trigger input pin
- *   will be ignored.
- *   Controller will respond with 7x
- *
- * Start trigger mode: 8
- *   Controller will return 8 to indicate start of triggered mode
- *   Stop triggered a 9. Trigger mode will  supersede (but not stop)
- *   blanking mode (if it was active)
- *
- * Stop Trigger mode: 9
- *   Controller will return 9x where x is the number of triggers received during the last
- *   trigger mode run
- *
- * Set time interval for timed trigger mode: 10xtt
- *   Where x is the number of the interval (currently, 12 intervals can be stored)
- *   and tt is the interval (in ms) in Arduino unsigned int format.
- *   Controller will return 10x
- *
-  * Sets how often the timed pattern will be repeated: 11x
- *   This value will be used in timed-trigger mode and sets how often the output
- *   pattern will be repeated.
- *   Controller will return 11x
- *
- * Starts timed trigger mode: 12
- *   In timed trigger mode, digital patterns as set with function 5 will appear on the
- *   output pins with intervals (in ms) as set with function 10.  After the number of
- *   patterns set with function 6, the pattern will be repeated for the number of times
- *   set with function 11.  Any input character (which will be processed) will stop
- *   the pattern generation.
- *   Controller will retun 12.
- *
- * Start blanking Mode: 20
- *   In blanking mode, zeroes will be written on the output pins when the trigger pin
- *   is low, when the trigger pin is high, the pattern set with command #1 will be
- *   applied to the output pins.
- *   Controller will return 20
- *
- * Stop blanking Mode: 21
- *   Stops blanking mode.  Controller returns 21
- *
- * Blanking mode trigger direction: 22x
- *   Sets whether to blank on trigger high or trigger low.  x=0: blank on trigger high,
- *   x=1: blank on trigger low.  x=0 is the default
- *   Controller returns 22
- *
- *
- * Get Identification: 30
- *   Returns (asci!) MM-Ard\r\n
- *
- * Get Version: 31
- *   Returns: version number (as ASCI string) \r\n
- *
- * Read digital state of analogue input pins 0-5: 40
- *   Returns raw value of PINC (two high bits are not used)
- *
- * Read analogue state of pint pins 0-5: 41x
- *   x=0-5.  Returns analogue value as a 10-bit number (0-1023)
- *
- *
- *
- * Possible extensions:
- *   Set and Get Mode (low, change, rising, falling) for trigger mode
- *   Get digital patterm
- *   Get Number of digital patterns
- */
+
+Based on the origianl Arduino code for AOTF control and interface with uManager
+
+https://github.com/micro-manager/micro-manager/tree/master/DeviceAdapters/Arduino/AOTFcontroller
+
+To connect to Micro-Manager, add Arduino-Hub device and create Group with single
+read-only property, Arduino-Input-AnalogInput0
+To update temperature, type any number into the property in the main MicroManager window
+
+*/
+
+// Temp sensor code:
+#include <OneWire.h>
+#include <DallasTemperature.h>
+#define ONE_WIRE_BUS 2
+OneWire oneWire(ONE_WIRE_BUS);
+DallasTemperature sensors(&oneWire);
+DeviceAddress insideThermometer;
 
    unsigned int version_ = 2;
 
    // pin on which to receive the trigger (2 and 3 can be used with interrupts, although this code does not use interrupts)
-   int inPin_ = 2;
+   //int inPin_ = 2;
    // to read out the state of inPin_ faster, use
-   int inPinBit_ = 1 << inPin_;  // bit mask
+   int inPinBit_ = 1 ;//<< inPin_;  // bit mask
 
    // pin connected to DIN of TLV5618
    int dataPin = 3;
@@ -133,11 +47,19 @@
    bool triggerMode_ = false;
    boolean triggerState_ = false;
 
+
+
  void setup() {
+  // temp sensor
+  sensors.begin();
+  sensors.getAddress(insideThermometer, 0);
+  sensors.setResolution(insideThermometer, 11); // set 11 bit temperature sensor
+  sensors.requestTemperaturesByIndex(0);
+
    // Higher speeds do not appear to be reliable
    Serial.begin(57600);
 
-   pinMode(inPin_, INPUT);
+   //pinMode(inPin_, INPUT);
    pinMode (dataPin, OUTPUT);
    pinMode (clockPin, OUTPUT);
    pinMode (latchPin, OUTPUT);
@@ -157,6 +79,7 @@
  }
 
  void loop() {
+
    if (Serial.available() > 0) {
      int inByte = Serial.read();
      switch (inByte) {
@@ -242,7 +165,7 @@
          if (patternLength_ > 0) {
            sequenceNr_ = 0;
            triggerNr_ = -skipTriggers_;
-           triggerState_ = digitalRead(inPin_) == HIGH;
+           triggerState_ = false; //digitalRead(inPin_) == HIGH;
            PORTB = B00000000;
            Serial.write( byte(8));
            triggerMode_ = true;
@@ -343,16 +266,24 @@
          break;
 
        case 41:
+
          if (waitForSerial(timeOut_)) {
            int pin = Serial.read();
+           sensors.requestTemperaturesByIndex(0);
+           int val = round(sensors.getTempC(insideThermometer)*10);
            if (pin >= 0 && pin <=5) {
-              int val = analogRead(pin);
+              //int val = random(666); analogRead(pin);
+
+
               Serial.write( byte(41));
               Serial.write( pin);
               Serial.write( highByte(val));
               Serial.write( lowByte(val));
+
            }
+
          }
+
          break;
 
        case 42:
@@ -442,34 +373,3 @@ void analogueOut(int channel, byte msb, byte lsb)
   digitalWrite(clockPin, LOW);
   digitalWrite(latchPin, HIGH);
 }
-
-
-
-/*
- // This function is called through an interrupt
-void triggerMode()
-{
-  if (triggerNr_ >=0) {
-    PORTB = triggerPattern_[sequenceNr_];
-    sequenceNr_++;
-    if (sequenceNr_ >= patternLength_)
-      sequenceNr_ = 0;
-  }
-  triggerNr_++;
-}
-void blankNormal()
-{
-    if (DDRD & B00000100) {
-      PORTB = currentPattern_;
-    } else
-      PORTB = 0;
-}
-void blankInverted()
-{
-   if (DDRD & B00000100) {
-     PORTB = 0;
-   } else {
-     PORTB = currentPattern_;
-   }
-}
-*/
