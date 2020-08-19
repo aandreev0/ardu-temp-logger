@@ -1,16 +1,16 @@
-% matlab code to talk to temp sensor
+% matlab code to talk to temperature sensor
+% works with temp_controller.ino Arduino code
+plot_data = 1; % do we need to output a plot? 1/0
 port = 'COM3';
 
 s = serial(port,'Terminator','LF');
 timestamps = [];
 temp_stamps = [];
 trial = 0
-while true
+while true % infinite loop
     trial = trial + 1;
     trial
-
     fopen(s)
-
     for i=1:5
         disp(['Acq #',num2str(i)])
         t = fgets(s);
@@ -21,8 +21,9 @@ while true
     end
     fclose(s)
     pause(30)
-
-    figure(1)
-    clf
-    plot(timestamps,temp_stamps,'.-')
+    if plot_data
+      figure(1)
+      clf
+      plot(timestamps,temp_stamps,'.-')
+    end
 end
