@@ -43,4 +43,11 @@ Upload firmware for arduino from `umanager_temperature`
 
 # Hardware wiring
 
-Borrowed more or less from [Konstantin Dimitrov](https://create.arduino.cc/projecthub/TheGadgetBoy/ds18b20-digital-temperature-sensor-and-arduino-9cc806)
+Replicated from [Konstantin Dimitrov](https://create.arduino.cc/projecthub/TheGadgetBoy/ds18b20-digital-temperature-sensor-and-arduino-9cc806)
+
+# Components:
+
+- [Arduino Uno R3](https://www.digikey.com/products/en?keywords=1050-1024-ND)
+- [Proto Shield for Arduino Kit Stackable Version R3](https://www.digikey.com/products/en?keywords=1528-1207-ND)
+- [JST-SM Pigtail connector (3-pin)](https://www.digikey.com/product-detail/en/sparkfun-electronics/CAB-14575/1568-1831-ND/8543395)
+- [Waterproof DS18B20 Digital Temperature Sensor](https://www.digikey.com/products/en?keywords=1528-1592-ND)
